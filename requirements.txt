@@ -3,4 +3,5 @@ torch
 torchvision
 pillow 
 scikit-image 
-requests 
+requests
+python-dotenv 

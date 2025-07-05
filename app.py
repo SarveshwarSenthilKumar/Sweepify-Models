@@ -6,10 +6,14 @@ from requests.exceptions import HTTPError
 import random
 from werkzeug.exceptions import RequestEntityTooLarge
 from roboflow_utils import roboflow_infer
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
-# Increase maximum file size to 50MB
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+# Increase maximum file size to 200MB to allow for large images that will be compressed
+app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024
 # Additional configurations for large file uploads
 app.config['MAX_CONTENT_PATH'] = None
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
@@ -28,11 +32,11 @@ def get_buffer(score):
 
 @app.errorhandler(RequestEntityTooLarge)
 def handle_file_too_large(e):
-    return jsonify({'error': 'File too large. Please upload images smaller than 50MB.'}), 413
+    return jsonify({'error': 'File too large. Please upload images smaller than 200MB.'}), 413
 
 @app.errorhandler(413)
 def handle_413(e):
-    return jsonify({'error': 'File too large. Please upload images smaller than 50MB.'}), 413
+    return jsonify({'error': 'File too large. Please upload images smaller than 200MB.'}), 413
 
 @app.route('/')
 def index():
@@ -43,6 +47,11 @@ def analyze():
     if 'image' not in request.files:
         return jsonify({'error': 'No image uploaded'}), 400
     image = request.files['image']
+    
+    # Debug: Print file info
+    print(f"Received file: {image.filename}")
+    print(f"Content type: {image.content_type}")
+    
     try:
         try:
             result = roboflow_infer(image)
@@ -51,7 +60,6 @@ def analyze():
             num_trash = sum(1 for d in detections if d.get('class', '').lower() == 'trash')
             print(num_trash)
             score = min(num_trash * 4, 250) if num_trash > 0 else 0
-            score = max(score - get_buffer(score), 0)
             is_trashy = score > 12
             is_clean = not is_trashy
             return jsonify({
@@ -62,6 +70,7 @@ def analyze():
         except HTTPError as e:
             return jsonify({'error': f'Roboflow API error: {e.response.text}'}), 400
     except Exception as e:
+        print(f"Error in analyze route: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/rate_cleaning', methods=['POST'])
@@ -82,9 +91,7 @@ def rate_cleaning():
         before_trash = sum(1 for d in before_result.get('predictions', []) if d.get('class', '').lower() == 'trash')
         after_trash = sum(1 for d in after_result.get('predictions', []) if d.get('class', '').lower() == 'trash')
         before_score = min(before_trash * 4, 250) if before_trash > 0 else 0
-        before_score = max(before_score + get_buffer(before_score), 0)
         after_score = min(after_trash * 4, 250) if after_trash > 0 else 0
-        after_score = max(after_score - get_buffer(after_score), 0)
         points_awarded = before_score - after_score
         if points_awarded < 0:
             points_awarded = 0
