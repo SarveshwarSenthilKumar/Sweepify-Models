@@ -1,12 +1,18 @@
 from flask import Flask, request, jsonify, render_template
-from PIL import Image
-import io
 import os
 import tempfile
 import uuid
 from requests.exceptions import HTTPError
-
+import random
+from werkzeug.exceptions import RequestEntityTooLarge
 from roboflow_utils import roboflow_infer
+
+app = Flask(__name__)
+# Increase maximum file size to 50MB
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+# Additional configurations for large file uploads
+app.config['MAX_CONTENT_PATH'] = None
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 def get_buffer(score):
     if score <= 20:
@@ -20,7 +26,13 @@ def get_buffer(score):
     else:
         return 20
 
-app = Flask(__name__)
+@app.errorhandler(RequestEntityTooLarge)
+def handle_file_too_large(e):
+    return jsonify({'error': 'File too large. Please upload images smaller than 50MB.'}), 413
+
+@app.errorhandler(413)
+def handle_413(e):
+    return jsonify({'error': 'File too large. Please upload images smaller than 50MB.'}), 413
 
 @app.route('/')
 def index():
@@ -110,4 +122,4 @@ def rate_cleaning():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    app.run(debug=True, host='0.0.0.0', port=5000) 
