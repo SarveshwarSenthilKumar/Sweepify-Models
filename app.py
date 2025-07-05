@@ -58,6 +58,12 @@ def rate_cleaning():
         return jsonify({'error': 'Both before and after images required'}), 400
     before = request.files['before']
     after = request.files['after']
+    # Get nomination and streak info from form
+    nominated = request.form.get('nominated', 'false').lower() == 'true'
+    try:
+        daily_streak = int(request.form.get('daily_streak', '0'))
+    except ValueError:
+        daily_streak = 0
     try:
         before_result = roboflow_infer(before)
         after_result = roboflow_infer(after)
@@ -74,6 +80,15 @@ def rate_cleaning():
         if before_score > 0:
             percent_cleaned = ((before_score - after_score) / before_score) * 100
             percent_cleaned = max(0, min(100, percent_cleaned))
+        # Apply bonuses
+        bonus_message = ""
+        if nominated:
+            percent_cleaned += 10
+            bonus_message += "Nominated bonus applied (+10%). "
+        if daily_streak > 0:
+            percent_cleaned += daily_streak * 1
+            bonus_message += f"Daily streak bonus applied (+{daily_streak}%). "
+        percent_cleaned = min(percent_cleaned, 100)
         before_is_trashy = before_score > 12
         before_is_clean = not before_is_trashy
         after_is_trashy = after_score > 12
@@ -86,7 +101,8 @@ def rate_cleaning():
             'before_is_trashy': before_is_trashy,
             'before_is_clean': before_is_clean,
             'after_is_trashy': after_is_trashy,
-            'after_is_clean': after_is_clean
+            'after_is_clean': after_is_clean,
+            'bonus_message': bonus_message.strip()
         })
     except HTTPError as e:
         return jsonify({'error': f'Roboflow API error: {e.response.text}'}), 400

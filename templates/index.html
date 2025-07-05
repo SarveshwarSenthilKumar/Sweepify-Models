@@ -25,6 +25,8 @@
     <form id="rate-form" enctype="multipart/form-data">
         <label>Before: <input type="file" name="before" accept="image/*" required></label><br><br>
         <label>After: <input type="file" name="after" accept="image/*" required></label><br><br>
+        <label><input type="checkbox" name="nominated" id="nominated"> Nominated to clean this spot</label><br><br>
+        <label>Daily streak: <input type="number" name="daily_streak" id="daily_streak" min="0" value="0"></label><br><br>
         <button type="submit">Rate Cleaning</button>
     </form>
     <div id="rate-result"></div>
@@ -61,7 +63,13 @@
     document.getElementById('rate-form').onsubmit = async function(e) {
         e.preventDefault();
         const form = e.target;
-        const data = new FormData(form);
+        const data = new FormData();
+        // Append files
+        data.append('before', form.before.files[0]);
+        data.append('after', form.after.files[0]);
+        // Append nomination and streak
+        data.append('nominated', form.nominated.checked ? 'true' : 'false');
+        data.append('daily_streak', form.daily_streak.value);
         const resultDiv = document.getElementById('rate-result');
         resultDiv.textContent = 'Rating...';
         try {
@@ -77,16 +85,13 @@
                 typeof json.after_score === 'number' &&
                 typeof json.points_awarded === 'number'
             ) {
-                let percentCleaned = 0;
-                if (json.before_score > 0) {
-                    percentCleaned = ((json.before_score - json.after_score) / json.before_score) * 100;
-                    percentCleaned = Math.max(0, Math.min(100, percentCleaned));
-                }
+                let percentCleaned = json.percentage_cleaned || 0;
                 resultDiv.innerHTML = `
                     Before cleaning score: <b>${json.before_score}</b><br>
                     After cleaning score: <b>${json.after_score}</b><br>
                     Points awarded: <b>${json.points_awarded}</b><br>
-                    Percentage cleaned: <b>${percentCleaned.toFixed(2)}%</b>
+                    Percentage cleaned: <b>${percentCleaned.toFixed(2)}%</b><br>
+                    ${json.bonus_message ? `<span class='result'>${json.bonus_message}</span>` : ''}
                 `;
             } else {
                 resultDiv.innerHTML = `<span class='error'>Invalid response from server.</span>`;
