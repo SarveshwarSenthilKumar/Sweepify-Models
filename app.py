@@ -1,21 +1,12 @@
 from flask import Flask, request, jsonify, render_template
-from PIL import Image
-import io
 import os
 import tempfile
 import uuid
 from requests.exceptions import HTTPError
 import random
-
-from models import DirtyNet, CleanQualityNet
-from utils import preprocess_image
 from roboflow_utils import roboflow_infer
 
 app = Flask(__name__)
-
-# Instantiate models
-dirty_model = DirtyNet()
-clean_quality_model = CleanQualityNet()
 
 def get_buffer(score):
     if score <= 20:
