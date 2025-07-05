@@ -47,8 +47,12 @@ def analyze():
             if score > 0:
                 buffer = get_buffer(score)
                 score = max(score - buffer, 0)
+            is_trashy = score > 12
+            is_clean = not is_trashy
             return jsonify({
-                'score': score
+                'score': score,
+                'is_trashy': is_trashy,
+                'is_clean': is_clean
             })
         except HTTPError as e:
             return jsonify({'error': f'Roboflow API error: {e.response.text}'}), 400

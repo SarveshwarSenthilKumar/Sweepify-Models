@@ -45,7 +45,11 @@
             if (json.error) {
                 resultDiv.innerHTML = `<span class='error'>${json.error}</span>`;
             } else if (typeof json.score === 'number' && !isNaN(json.score)) {
-                resultDiv.innerHTML = `Trash difficulty score: <b>${json.score}</b>`;
+                resultDiv.innerHTML = `
+                    Trash difficulty score: <b>${json.score}</b><br>
+                    Is Trashy: <b>${json.is_trashy ? 'Yes' : 'No'}</b><br>
+                    Is Clean: <b>${json.is_clean ? 'Yes' : 'No'}</b>
+                `;
             } else {
                 resultDiv.innerHTML = `<span class='error'>No score detected or invalid response.</span>`;
             }
@@ -73,10 +77,16 @@
                 typeof json.after_score === 'number' &&
                 typeof json.points_awarded === 'number'
             ) {
+                let percentCleaned = 0;
+                if (json.before_score > 0) {
+                    percentCleaned = ((json.before_score - json.after_score) / json.before_score) * 100;
+                    percentCleaned = Math.max(0, Math.min(100, percentCleaned));
+                }
                 resultDiv.innerHTML = `
                     Before cleaning score: <b>${json.before_score}</b><br>
                     After cleaning score: <b>${json.after_score}</b><br>
-                    Points awarded: <b>${json.points_awarded}</b>
+                    Points awarded: <b>${json.points_awarded}</b><br>
+                    Percentage cleaned: <b>${percentCleaned.toFixed(2)}%</b>
                 `;
             } else {
                 resultDiv.innerHTML = `<span class='error'>Invalid response from server.</span>`;
