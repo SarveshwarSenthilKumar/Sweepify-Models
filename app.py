@@ -40,8 +40,12 @@ def analyze():
             print(num_trash)
             score = min(num_trash * 4, 250) if num_trash > 0 else 0
             score = max(score - get_buffer(score), 0)
+            is_trashy = score > 12
+            is_clean = not is_trashy
             return jsonify({
-                'score': score
+                'score': score,
+                'is_trashy': is_trashy,
+                'is_clean': is_clean
             })
         except HTTPError as e:
             return jsonify({'error': f'Roboflow API error: {e.response.text}'}), 400
@@ -60,16 +64,29 @@ def rate_cleaning():
         before_trash = sum(1 for d in before_result.get('predictions', []) if d.get('class', '').lower() == 'trash')
         after_trash = sum(1 for d in after_result.get('predictions', []) if d.get('class', '').lower() == 'trash')
         before_score = min(before_trash * 4, 250) if before_trash > 0 else 0
-        before_score = max(before_score - get_buffer(before_score), 0)
+        before_score = max(before_score + get_buffer(before_score), 0)
         after_score = min(after_trash * 4, 250) if after_trash > 0 else 0
         after_score = max(after_score - get_buffer(after_score), 0)
         points_awarded = before_score - after_score
         if points_awarded < 0:
             points_awarded = 0
+        percent_cleaned = 0
+        if before_score > 0:
+            percent_cleaned = ((before_score - after_score) / before_score) * 100
+            percent_cleaned = max(0, min(100, percent_cleaned))
+        before_is_trashy = before_score > 12
+        before_is_clean = not before_is_trashy
+        after_is_trashy = after_score > 12
+        after_is_clean = not after_is_trashy
         return jsonify({
             'before_score': before_score,
             'after_score': after_score,
-            'points_awarded': points_awarded
+            'points_awarded': points_awarded,
+            'percentage_cleaned': percent_cleaned,
+            'before_is_trashy': before_is_trashy,
+            'before_is_clean': before_is_clean,
+            'after_is_trashy': after_is_trashy,
+            'after_is_clean': after_is_clean
         })
     except HTTPError as e:
         return jsonify({'error': f'Roboflow API error: {e.response.text}'}), 400
