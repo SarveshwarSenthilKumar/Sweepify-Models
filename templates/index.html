@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sweepify Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        h2 { margin-top: 40px; }
+        form { margin-bottom: 30px; }
+        .result { margin-top: 10px; color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Sweepify Demo</h1>
+
+    <h2>Check if Spot is Dirty</h2>
+    <form id="analyze-form" enctype="multipart/form-data">
+        <input type="file" name="image" accept="image/*" required>
+        <button type="submit">Analyze</button>
+    </form>
+    <div id="analyze-result"></div>
+
+    <h2>Rate Cleaning Job</h2>
+    <form id="rate-form" enctype="multipart/form-data">
+        <label>Before: <input type="file" name="before" accept="image/*" required></label><br><br>
+        <label>After: <input type="file" name="after" accept="image/*" required></label><br><br>
+        <button type="submit">Rate Cleaning</button>
+    </form>
+    <div id="rate-result"></div>
+
+    <script>
+    document.getElementById('analyze-form').onsubmit = async function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const data = new FormData(form);
+        const resultDiv = document.getElementById('analyze-result');
+        resultDiv.textContent = 'Analyzing...';
+        try {
+            const res = await fetch('/analyze', {
+                method: 'POST',
+                body: data
+            });
+            const json = await res.json();
+            if (json.error) {
+                resultDiv.innerHTML = `<span class='error'>${json.error}</span>`;
+            } else if (typeof json.score === 'number' && !isNaN(json.score)) {
+                resultDiv.innerHTML = `Trash difficulty score: <b>${json.score}</b>`;
+            } else {
+                resultDiv.innerHTML = `<span class='error'>No score detected or invalid response.</span>`;
+            }
+        } catch (err) {
+            resultDiv.innerHTML = `<span class='error'>Error: ${err}</span>`;
+        }
+    };
+
+    document.getElementById('rate-form').onsubmit = async function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const data = new FormData(form);
+        const resultDiv = document.getElementById('rate-result');
+        resultDiv.textContent = 'Rating...';
+        try {
+            const res = await fetch('/rate_cleaning', {
+                method: 'POST',
+                body: data
+            });
+            const json = await res.json();
+            if (json.error) {
+                resultDiv.innerHTML = `<span class='error'>${json.error}</span>`;
+            } else if (
+                typeof json.before_score === 'number' &&
+                typeof json.after_score === 'number' &&
+                typeof json.points_awarded === 'number'
+            ) {
+                resultDiv.innerHTML = `
+                    Before cleaning score: <b>${json.before_score}</b><br>
+                    After cleaning score: <b>${json.after_score}</b><br>
+                    Points awarded: <b>${json.points_awarded}</b>
+                `;
+            } else {
+                resultDiv.innerHTML = `<span class='error'>Invalid response from server.</span>`;
+            }
+        } catch (err) {
+            resultDiv.innerHTML = `<span class='error'>Error: ${err}</span>`;
+        }
+    };
+    </script>
+</body>
+</html> 
